@@ -1,1 +1,1 @@
-# MC-Portfolio-Optimization
+# A Monte Carlo Portfolio Optimization Framework
