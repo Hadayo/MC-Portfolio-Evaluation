@@ -51,11 +51,15 @@ class ExpandArray(object):
         return self.as_array().__str__()
 
     def last_col(self):
-        """Return the last column of the array.
+        """Return the last column of the array. If the array has one row, then
+        the function returns its last element.
 
         Returns
         -------
-        list
+        list or float
 
         """
-        return [row[-1] for row in self.data]
+        if self.num_rows == 1:
+            return self.data[0][-1]
+        else:
+            return [row[-1] for row in self.data]

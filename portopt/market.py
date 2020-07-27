@@ -28,7 +28,7 @@ class ConstantMarketModel(object):
         The stock mean rate of return (in 1/years).
     stock_volatility : float
         The stock volatility (in 1/sqrt(years)).
-    interest_rate : float
+    ir : float
         The money market account interest rate.
 
     Attributes
@@ -38,21 +38,21 @@ class ConstantMarketModel(object):
     dt
     stock_mean
     stock_volatility
-    interest_rate
+    ir
 
     """
-    def __init__(self, dt, stock_mean, stock_volatility, interest_rate):
+    def __init__(self, dt, stock_mean, stock_volatility, ir):
         self.dt = dt
         self.stock_mean = stock_mean
         self.stock_volatility = stock_volatility
-        self.interest_rate = interest_rate
+        self.ir = ir
         self.num_params = 3
 
     def reset(self):
         pass  # here for consistency reasons
 
     def step(self):
-        return self.stock_mean, self.stock_volatility, self.interest_rate
+        return self.stock_mean, self.stock_volatility, self.ir
 
     def simulate(self, T_horizon):
         """Simulate the parameters over a path with length T_horizon.
@@ -67,18 +67,34 @@ class ConstantMarketModel(object):
         Returns
         -------
         ndarray
-            A [num_params x T/dt] matrix where each row represents a path for
+            A [num_params x (T/dt - 1)] matrix where each row represents a path for
             one of the tracked parameters.
 
         """
-        num_points = int(T_horizon // self.dt)
-        params = np.array([self.stock_mean, self.stock_volatility, self.interest_rate]).reshape(-1, 1)
+        num_points = int(T_horizon / self.dt) - 1
+        params = np.array([self.stock_mean, self.stock_volatility, self.ir]).reshape(-1, 1)
         return np.ones((self.num_params, num_points))*params
 
 
 class MarketSimulator(object):
     """The MarketSimulator can simulates a market with a stock and a money
     market account under a given market model.
+
+    The stock prices is progressed according to the Generalized Geometric
+    Brownian Motion SDE:
+        dS_t = S_t * (mu_t*dt + sigma_t*dW_t)
+    where:
+        S - the price of the stock
+        mu - the instantaneous mean rate of return
+        sigma - instantaneous volatility
+        W - a Brownian motion
+
+    The money market price is progressed according to the continous compounding
+    formula:
+        dM_t = M_t*r_t*dt
+    where:
+        M - the money market price
+        r - the instantaneous interest rate
 
     The class has two modes of operation: online or batch.
     1. online mode:
@@ -111,10 +127,13 @@ class MarketSimulator(object):
     def __init__(self, market_model, dt):
         self.dt = dt
         self.num_assets = 2  # including the money market account
-        self.prices = ExpandArray(self.num_assets)
         self.market_model = market_model
 
+        self.reset()
+
+    def reset(self):
         self.market_model.reset()
+        self.prices = ExpandArray(self.num_assets)
         self.prices.append_col([1, 1])
 
     def step(self):
@@ -136,15 +155,15 @@ class MarketSimulator(object):
             available to the trader.
 
         """
-        stock_mean, stock_volatility, interest_rate = self.market_model.step()
+        stock_mean, stock_volatility, ir = self.market_model.step()
         money_market_price, stock_price = self.prices.last_col()
 
         delta_stock = stock_price*(stock_mean*self.dt
                                    + stock_volatility*np.sqrt(self.dt)*np.random.randn())
         new_stock_price = stock_price + delta_stock
-        new_money_market_price = money_market_price*(1+interest_rate*self.dt)
+        new_money_market_price = money_market_price*(1+ir*self.dt)
 
-        information = [new_money_market_price, new_stock_price, interest_rate]
+        information = [new_money_market_price, new_stock_price, ir]
         secret_information = [stock_mean, stock_volatility]
         self.prices.append_col([new_money_market_price, new_stock_price])
 
@@ -163,26 +182,31 @@ class MarketSimulator(object):
         Returns
         -------
         information : ndarray
-            A 2 by T_horizon/dt array containing the prices of the stock and
-            the money market account for the given horizon.
+            A 3 by T_horizon/dt array containing the prices of the stock,
+            the money market account and the interest rates for the given
+            horizon.
         secret_information : ndarray
-            A 3 by T_horizon/dt array containing the market parameters path
-            over the given horizon.
+            A 2 by T_horizon/dt array containing the market parameters path
+            over the given horizon (stock mean and volatility).
 
         """
-        num_points = int(T_horizon//self.dt)
+        num_points = int(T_horizon/self.dt) - 1
         market_params = self.market_model.simulate(T_horizon)
         stock_means = market_params[0]
         stock_volatilities = market_params[1]
-        interest_rates = market_params[2]
+        irs = market_params[2]
 
         brownian_motion = np.random.randn(num_points)
         stock_multipliers = (1 + stock_means*self.dt
                              + stock_volatilities*np.sqrt(self.dt)*brownian_motion)
         stock_prices = np.hstack(([1], np.cumprod(stock_multipliers)))
 
-        money_market_prices = np.hstack(([1], np.exp(self.dt*np.cumsum(interest_rates))))
+        money_market_prices = np.hstack(([1], np.exp(self.dt*np.cumsum(irs))))
 
-        information = np.vstack([money_market_prices, stock_prices])
-        secret_information = market_params
+        irs_long = np.insert(irs, 0, irs[0])
+        information = np.vstack([money_market_prices, stock_prices, irs_long])
+        secret_information = market_params[:2]
         return information, secret_information
+
+    def get_prices(self):
+        return self.prices.as_array()

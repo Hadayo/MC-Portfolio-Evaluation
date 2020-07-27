@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 from context import portopt
 
-np.random.seed(10)
+# np.random.seed(10)
 dt = 1/365
 T_horizon = 100
 num_points = int(T_horizon//dt)

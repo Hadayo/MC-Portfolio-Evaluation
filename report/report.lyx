@@ -139,6 +139,21 @@ set_width "auto"
 \end_inset
 
 
+\begin_inset Newpage newpage
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Important notes
+\end_layout
+
+\begin_layout Standard
+All stocks and money market and portfolio starts with price/value of one
+ dollar.
+ this is becuase we can buy parts of stocks and we are intreseted only in
+ the final relative gain.
 \end_layout
 
 \begin_layout Section
@@ -187,6 +202,77 @@ Since this library is dedicated to simulations, a big effort was put into
 
 \begin_layout Standard
 The documentation for the library in its modolues is presented in this appendix.
+\end_layout
+
+\begin_layout Subsection
+The batch equation for the portfolio value process
+\end_layout
+
+\begin_layout Standard
+The portfolio SDE is
+\begin_inset Formula 
+\[
+\mathrm{d}X_{t}=\phi_{t}\mathrm{d}S_{t}+\left(X_{t}-\phi_{t}S_{t}\right)r_{t}\mathrm{d}t
+\]
+
+\end_inset
+
+Euler's method leads to the following update rule
+\begin_inset Formula 
+\[
+X_{n+1}=X_{n}+\phi_{n}\left(S_{n+1}-S_{n}\right)+\left(X_{n}-\phi_{n}S_{n}\right)r_{n}\Delta t
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Using the fact
+\begin_inset Formula 
+\[
+\phi_{n}=\frac{\pi_{n}X_{n}}{S_{n}}
+\]
+
+\end_inset
+
+we get
+\begin_inset Formula 
+\begin{align*}
+X_{n+1} & =X_{n}+\frac{\pi_{n}X_{n}}{S_{n}}\left(S_{n+1}-S_{n}\right)+\left(X_{n}-\frac{\pi_{n}X_{n}}{S_{n}}S_{n}\right)r_{n}\Delta t\\
+ & =X_{n}+X_{n}\pi_{n}\frac{S_{n+1}-S_{n}}{S_{n}}+X_{n}\left(1-\pi_{n}\right)r_{n}\Delta t\\
+ & =X_{n}\left[1+\pi_{n}\frac{S_{n+1}-S_{n}}{S_{n}}+\left(1-\pi_{n}\right)r_{n}\Delta t\right]\\
+ & \triangleq X_{n}a_{n+1}
+\end{align*}
+
+\end_inset
+
+Together with the intial condition 
+\begin_inset Formula $X_{0}=1$
+\end_inset
+
+ we get
+\begin_inset Formula 
+\[
+X_{n}=\prod_{i=1}^{n}a_{n}
+\]
+
+\end_inset
+
+Thus the vector 
+\begin_inset Formula $\left(X_{1},X_{2},\dots,X_{n}\right)$
+\end_inset
+
+ can be computed effeiciently with NumPy's 
+\family typewriter
+cumprod
+\family default
+ function on the vector 
+\begin_inset Formula $\left(a_{1},a_{2}\dots,a_{n}\right)$
+\end_inset
+
+.
 \end_layout
 
 \begin_layout Section

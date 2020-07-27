@@ -246,18 +246,14 @@ X_{n}=\prod_{i=1}^{n}a_{n}
 \end_inset
 
 Thus the vector 
-\begin_inset Formula $\left(X_{1},X_{2},\dots,X_{n}\right)$
+\begin_inset Formula $\left(X_{1},X_{2},\dots,X\right)$
 \end_inset
 
- can be computed effeiciently with NumPy's 
+ effeiciently with NumPy's 
 \family typewriter
 cumprod
 \family default
- function on the vector 
-\begin_inset Formula $\left(a_{1},a_{2}\dots,a_{n}\right)$
-\end_inset
-
-.
+ function.
 \end_layout
 
 \begin_layout Section
