@@ -53,7 +53,7 @@ class Trader(object):
         init_positions = [init_money_market_position, init_stock_position]
         self.positions.append_col(init_positions)
 
-    def step(self, information):
+    def step(self, information, *args):
         """Updates the portfolio value and positions according to the latest
         prices and strategy.
 
@@ -81,7 +81,7 @@ class Trader(object):
         self.portfolio_val.append_col([new_port_val])
 
         # update positions
-        stock_fraction = self.strategist.step(information)
+        stock_fraction = self.strategist.step(information, *args)
         stock_position = self.frac2position(stock_fraction, stock_price)
         money_market_position = self.frac2position(1-stock_fraction,
                                                    money_market_price)
@@ -90,7 +90,7 @@ class Trader(object):
         self.last_stock_price = stock_price
         return positions, new_port_val
 
-    def simulate(self, information):
+    def compute_path(self, information, *args):
         """Computes the portfolio value and positions over the paths described
         in `information`.
 
@@ -112,7 +112,7 @@ class Trader(object):
         past_stock_prices = information[1][:-1]
         current_stock_prices = information[1][1:]
         irs = information[2][1:]
-        stock_fractions = self.strategist.simulate(information)
+        stock_fractions = self.strategist.compute_path(information, *args)
 
         stock_relative_gains = (current_stock_prices-past_stock_prices)/past_stock_prices
         aux_arr = (1 + stock_fractions[1:]*stock_relative_gains
@@ -148,3 +148,6 @@ class Trader(object):
 
     def get_portfolio_values(self):
         return self.portfolio_val.as_array().reshape(-1)
+
+    def identify(self):
+        return self.strategist.identify()

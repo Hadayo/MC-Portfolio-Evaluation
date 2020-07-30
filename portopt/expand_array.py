@@ -15,11 +15,14 @@ class ExpandArray(object):
     ----------
     data : list
         A 2D nested list containing the 2D array.
+    is_empty : bool
+        Signifies if the array wasn't filled yet.
     num_rows
 
     """
     def __init__(self, num_rows):
         self.num_rows = num_rows
+        self.is_empty = True
         self.data = [[] for i in range(num_rows)]
 
     def append_col(self, col):
@@ -36,6 +39,7 @@ class ExpandArray(object):
 
         for i, row in enumerate(self.data):
             row.append(col[i])
+        self.is_empty = False
 
     def as_array(self):
         """Return the data as an ndarray.
@@ -45,6 +49,8 @@ class ExpandArray(object):
         ndarray
 
         """
+        if self.num_rows == 1:
+            return np.array(self.data).reshape(-1)  # return 1D vector
         return np.array(self.data)
 
     def __str__(self):

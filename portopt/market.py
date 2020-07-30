@@ -15,7 +15,7 @@ class ConstantMarketModel(object):
         Works through the `step` function. Each call to the function updates
         the tracked parameters and returns them to the caller.
     2. batch mode:
-        Works with the function `simulate` which receives the time horizon in
+        Works with the function `sample_path` which receives the time horizon in
         advance. One call to the function returns all the tracked parameters
         and their paths over time.
     Working in batch mode increases performance by 2 orders of magnitude.
@@ -54,7 +54,7 @@ class ConstantMarketModel(object):
     def step(self):
         return self.stock_mean, self.stock_volatility, self.ir
 
-    def simulate(self, T_horizon):
+    def sample_path(self, T_horizon):
         """Simulate the parameters over a path with length T_horizon.
         Since the market model describes a constant market, this equals
         duplicating the inital values through time.
@@ -73,7 +73,7 @@ class ConstantMarketModel(object):
         """
         num_points = int(T_horizon / self.dt) - 1
         params = np.array([self.stock_mean, self.stock_volatility, self.ir]).reshape(-1, 1)
-        return np.ones((self.num_params, num_points))*params
+        return np.ones((self.num_params, num_points)) * params
 
 
 class MarketSimulator(object):
@@ -101,7 +101,7 @@ class MarketSimulator(object):
         Works with the `step` function. Each call to the function updates
         the stock prices and returns them and the interest rate to the caller.
     2. batch mode:
-        Works with the function `simulate` which receives the time horizon in
+        Works with the function `sample_path` which receives the time horizon in
         advance. One call to the function returns all the stock prices and
         their paths over time.
     Working in batch mode increases performance by 2 orders of magnitude.
@@ -158,10 +158,10 @@ class MarketSimulator(object):
         stock_mean, stock_volatility, ir = self.market_model.step()
         money_market_price, stock_price = self.prices.last_col()
 
-        delta_stock = stock_price*(stock_mean*self.dt
-                                   + stock_volatility*np.sqrt(self.dt)*np.random.randn())
+        delta_stock = stock_price * (stock_mean * self.dt
+                                     + stock_volatility * np.sqrt(self.dt) * np.random.randn())
         new_stock_price = stock_price + delta_stock
-        new_money_market_price = money_market_price*(1+ir*self.dt)
+        new_money_market_price = money_market_price * (1 + ir * self.dt)
 
         information = [new_money_market_price, new_stock_price, ir]
         secret_information = [stock_mean, stock_volatility]
@@ -169,7 +169,7 @@ class MarketSimulator(object):
 
         return information, secret_information
 
-    def simulate(self, T_horizon):
+    def sample_path(self, T_horizon):
         """Computs a path for the prices of the stock and the money market
         account. This is the batch version of the `step` function that runs
         faster.
@@ -190,18 +190,18 @@ class MarketSimulator(object):
             over the given horizon (stock mean and volatility).
 
         """
-        num_points = int(T_horizon/self.dt) - 1
-        market_params = self.market_model.simulate(T_horizon)
+        num_points = int(T_horizon / self.dt) - 1
+        market_params = self.market_model.sample_path(T_horizon)
         stock_means = market_params[0]
         stock_volatilities = market_params[1]
         irs = market_params[2]
 
         brownian_motion = np.random.randn(num_points)
-        stock_multipliers = (1 + stock_means*self.dt
-                             + stock_volatilities*np.sqrt(self.dt)*brownian_motion)
+        stock_multipliers = (1 + stock_means * self.dt
+                             + stock_volatilities * np.sqrt(self.dt) * brownian_motion)
         stock_prices = np.hstack(([1], np.cumprod(stock_multipliers)))
 
-        money_market_prices = np.hstack(([1], np.exp(self.dt*np.cumsum(irs))))
+        money_market_prices = np.hstack(([1], np.exp(self.dt * np.cumsum(irs))))
 
         irs_long = np.insert(irs, 0, irs[0])
         information = np.vstack([money_market_prices, stock_prices, irs_long])

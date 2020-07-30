@@ -5,10 +5,16 @@
 \save_transient_properties true
 \origin unavailable
 \textclass scrartcl
+\begin_preamble
+
+\SetKwInput{KwInput}{Input}                % Set the Input
+\SetKwInput{KwOutput}{Output}              % set the Output
+\end_preamble
 \use_default_options true
 \begin_modules
 tcolorbox
 theorems-ams-bytype
+algorithm2e
 \end_modules
 \maintain_unincluded_children false
 \language american
@@ -92,7 +98,7 @@ theorems-ams-bytype
 \begin_body
 
 \begin_layout Title
-A Monte Carlo Framework for Portfolio Optimization
+A Monte Carlo Framework for Portfolio Evaluation
 \end_layout
 
 \begin_layout Author
@@ -112,6 +118,86 @@ Monte Carlo Methods 048716
 
 \begin_layout Section*
 Preface
+\end_layout
+
+\begin_layout Standard
+In this paper we discuss the problem of optimizing financial portfolios.
+ The problem of 
+\begin_inset Quotes eld
+\end_inset
+
+distributing
+\begin_inset Quotes erd
+\end_inset
+
+ wealth or resources among different options is much broader than the one
+ related to financial investments.
+ However, the latter has strong mathematical foundations, thus allowing
+ thorough research.
+\end_layout
+
+\begin_layout Standard
+The forces governing economical markets havn't been determined to full extent
+ yet, so many assumptions need to be made in the process of modeling them.
+ Some of the assumptions are reasonable, some are not.
+ ** Markowitz said something about the purpose of science** But by solving
+ problems based on not-so-true assumptions we might get insights on how
+ to solve the more realistic problems.
+\end_layout
+
+\begin_layout Standard
+We begin with a description of the financial model we use followed by the
+ mathematical model describing it.
+ When then present some results in the context of optimal choosing of portfolios.
+ After that, the simulation framework will be discussed shortly and some
+ simulation results are shown with some interesting insights.
+ We will end with conclusions and ideas for future work.
+\end_layout
+
+\begin_layout Standard
+For the purpose of simulations, a new open-source Python library was written
+ with emphasis on performance, modularity and generality for future uses.
+ The code for the library is hosted on Github
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset CommandInset citation
+LatexCommand citep
+key "Hadayo2020"
+literal "false"
+
+\end_inset
+
+, and an initial documentation is presented as an appendix to this paper.
+\end_layout
+
+\begin_layout Standard
+Many of the information in the subsequent sections is adapted from
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset CommandInset citation
+LatexCommand citep
+key "korn2001option"
+literal "false"
+
+\end_inset
+
+ chapters 2 and 5, and
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset CommandInset citation
+LatexCommand citep
+key "shreve2004stochastic"
+literal "false"
+
+\end_inset
+
+ chapters 3,4 and 5.
 \end_layout
 
 \begin_layout Standard
@@ -146,14 +232,2405 @@ set_width "auto"
 \end_layout
 
 \begin_layout Section
-Important notes
+The Model
 \end_layout
 
 \begin_layout Standard
-All stocks and money market and portfolio starts with price/value of one
- dollar.
- this is becuase we can buy parts of stocks and we are intreseted only in
- the final relative gain.
+In this section we describe the financial model we follow in the paper and
+ its mathematical description.
+ At the end of the section, some historical notes on the use of Brownian
+ motion to model stock prices is added.
+ **more summary**
+\end_layout
+
+\begin_layout Subsection
+The Financial Model
+\end_layout
+
+\begin_layout Standard
+We examine a scenario with a single investor that investes his money over
+ a predetrmined time period 
+\begin_inset Formula $\left[0,T\right]$
+\end_inset
+
+ where 
+\begin_inset Formula $T$
+\end_inset
+
+
+\begin_inset CommandInset nomenclature
+LatexCommand nomenclature
+prefix "T"
+symbol "$T$"
+description "The investing period horizon."
+literal "true"
+
+\end_inset
+
+ is the horizon.
+ We assume a 
+\emph on
+continous-time model
+\emph default
+, at which the investor can act continously for every 
+\begin_inset Formula $t\in\left[0,T\right]$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+The investor is face with the problem if spliting his money between two
+ possible assets:
+\end_layout
+
+\begin_layout Subparagraph
+1.
+ The risk-free asset
+\end_layout
+
+\begin_layout Standard
+As the name suggests, this asset allows for gaining without risk.
+ This of course implies the gain is very small.
+ Since no asset has really no-risk, this is essentially one of the non-realistic
+ assumptions.
+ However, it is quite a resonable one as there are assets that involve a
+ very small risk in them.
+ Such an example is a 3-month U.S Tresury bill, that has gains very close
+ to the central bank intereset rate.
+ In this paper we will call this asset 
+\emph on
+the money market account
+\emph default
+.
+\begin_inset CommandInset nomenclature
+LatexCommand nomenclature
+symbol "Money market account"
+description "A risk-free asset."
+literal "true"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subparagraph
+2.
+ The stock
+\end_layout
+
+\begin_layout Standard
+This is an asset that is drived by unpredictable forces (Brownian motion
+ will be used for those soon).
+ Investing it gives a chance to gain more wealth than the risk-free asset,
+ but with the price of the positive probability to gain less as well.
+ We also assume the 
+\emph on
+small investor hypothesis
+\emph default
+, according to it the prices of the stock are not influenced at all by the
+ investor's actions.
+ This assumption doesn't hold for large institutions that trade thousands
+ of stocks.
+ By changing the demand or the supply of a large portion of shares from
+ the same stock they can change its price substantially.
+\end_layout
+
+\begin_layout Standard
+During the trading period, our investor can 
+\emph on
+rebalance
+\emph default
+ his holdings, i.e., sell some of the shares in one asset in order to buy
+ more of the other.
+ We also assume the invesotr begins his trading period with some fixed amount
+ of money, and this money only and his gains and losses during the trading
+ period will serve him to rebalance his portfolio.
+ This last condition is called the 
+\emph on
+self-financing condtion
+\emph default
+.
+\end_layout
+
+\begin_layout Standard
+At each time step 
+\begin_inset Formula $t\in\left[0,T\right]$
+\end_inset
+
+, our investor should choose how many shares does he hold from these two
+ assets.
+ We denote the number of shares from the stock at time t as 
+\begin_inset Formula $\phi\left(t\right)$
+\end_inset
+
+
+\begin_inset CommandInset nomenclature
+LatexCommand nomenclature
+prefix "phi"
+symbol "$\\phi\\left(t\\right)$"
+description "The number of shares in the stock at time $t$."
+literal "true"
+
+\end_inset
+
+.
+ For a given portfolio, whatever left after investing the stock, must be
+ invested in the money market accout.
+ We assume the shares in both assets are 
+\emph on
+perfectly divisible
+\emph default
+, so that the investor can hold 1, or 2, or 
+\begin_inset Formula $\nicefrac{1}{2}$
+\end_inset
+
+ or even 
+\begin_inset Formula $\pi$
+\end_inset
+
+ shares if he wishes too.
+ In practice, investors can usually only buy a whole number of shares, but
+ there are brokerages that allow for dividing the amount of shares to a
+ certain resolutions.
+\end_layout
+
+\begin_layout Standard
+We also assume a 
+\emph on
+friction-less market
+\emph default
+, which is a market with no transaction costs.
+ Out of all our assumptions, that might be the most 
+\end_layout
+
+\begin_layout Standard
+Another reasonable assumption is that our investor actions can depend on
+ the present and past only, i.e., 
+\begin_inset Formula $\phi\left(t\right)$
+\end_inset
+
+ can depend on the information given only up to time 
+\begin_inset Formula $t$
+\end_inset
+
+.
+ Information will be described in the next section in the terms of 
+\emph on
+filtration
+\emph default
+.
+\end_layout
+
+\begin_layout Paragraph
+Shorting
+\end_layout
+
+\begin_layout Standard
+An important (and also a realistic) assumption is that the investor can
+ have a 
+\emph on
+negative
+\emph default
+ number of shares.
+ When an investor is holding a negative amount of shares of an asset, he
+ is said to 
+\emph on
+short
+\emph default
+ the asset.
+ (The contorary to short an asset is to long it, but the latter is rarely
+ used as the former.) The most simple intuition to this scenario is an 
+\emph on
+overdraft
+\emph default
+.
+ Overdrafts are symboled with a negative amount of money that is associated
+ with a person, meaning he 
+\emph on
+owes
+\emph default
+ that money to the lender.
+\end_layout
+
+\begin_layout Standard
+In the case of the risk-free asset, shorting it means 
+\emph on
+borrowing
+\emph default
+ money in the same intereset it provides.
+ In the case of the stock, implementing shorting in practice needs to be
+ done by first borrowing the desired amount of shares from someone, probably
+ your broker.
+\end_layout
+
+\begin_layout Standard
+Shorting allows for a much wider spectrum of trading strategies, and very
+ oftenly, optimal portfolios include shorting components.
+\end_layout
+
+\begin_layout Subsection
+The Mathematical Model
+\begin_inset CommandInset label
+LatexCommand label
+name "subsec:The-Mathematical-Model"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+**more summary**
+\end_layout
+
+\begin_layout Standard
+We assume a probability space 
+\begin_inset Formula $\left(\Omega,\mathcal{F},\mathbb{P}\right)$
+\end_inset
+
+.
+ We denote 
+\begin_inset Formula $P_{0}\left(t\right)$
+\end_inset
+
+
+\begin_inset CommandInset nomenclature
+LatexCommand nomenclature
+prefix "P0"
+symbol "$P_{0}\\left(t\\right)$"
+description "Price of the money market account."
+literal "true"
+
+\end_inset
+
+ as the price of the money market account, and 
+\begin_inset Formula $P_{1}\left(t\right)$
+\end_inset
+
+
+\begin_inset CommandInset nomenclature
+LatexCommand nomenclature
+prefix "P1"
+symbol "$P_{1}\\left(t\\right)$"
+description "Price of the stock"
+literal "true"
+
+\end_inset
+
+ as the price of the stock.
+ Let 
+\begin_inset Formula $W(t)$
+\end_inset
+
+
+\begin_inset CommandInset nomenclature
+LatexCommand nomenclature
+prefix "W"
+symbol "$W(t)$"
+description "A Brownian motion (Wiener process)."
+literal "true"
+
+\end_inset
+
+ be a Brownian motion and 
+\begin_inset Formula $\left\{ \mathcal{F}_{t}\right\} _{t=0}^{T}$
+\end_inset
+
+ denotes the filtraion associated with this brownian motion.
+\end_layout
+
+\begin_layout Standard
+The number of shares of the stock 
+\begin_inset Formula $\phi\left(t\right)$
+\end_inset
+
+ is a random process adapted to the filtration 
+\begin_inset Formula $\mathcal{F}_{t}$
+\end_inset
+
+, i.e., 
+\begin_inset Formula $\phi\left(t\right)$
+\end_inset
+
+ is 
+\begin_inset Formula $\mathcal{F}_{t}$
+\end_inset
+
+-measurable for all 
+\begin_inset Formula $t\in\left[0,T\right]$
+\end_inset
+
+.
+ Thus for every 
+\begin_inset Formula $t\in\left[0,T\right]$
+\end_inset
+
+, 
+\begin_inset Formula $\phi\left(t\right)$
+\end_inset
+
+ can be evaluated only after seeing the information up to and including
+ time 
+\begin_inset Formula $t$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Subsubsection
+The Assets Processes
+\end_layout
+
+\begin_layout Standard
+Let 
+\begin_inset Formula $r\left(t\right)$
+\end_inset
+
+
+\begin_inset CommandInset nomenclature
+LatexCommand nomenclature
+prefix "rt"
+symbol "$r\\left(t\\right)$"
+description "Instantanous interest rate."
+literal "true"
+
+\end_inset
+
+ denote the instantanous interest rate, usualy measured in 
+\begin_inset Formula $\left[\unit{years}^{-1}\right]$
+\end_inset
+
+.
+ We assume 
+\begin_inset Formula $r\left(t\right)$
+\end_inset
+
+ is adapted to the filtration as well.
+ The intreset rate can be a constant or time-varying and even a random process,
+ but it must be positive almost surely.
+ The money market account dynamics are modeled by the Stochastic Differential
+ Equation (SDE
+\begin_inset CommandInset nomenclature
+LatexCommand nomenclature
+symbol "SDE"
+description "Stochastic Differntial Equation"
+literal "true"
+
+\end_inset
+
+)
+\begin_inset Formula 
+\begin{equation}
+\mathrm{d}P_{0}\left(t\right)=P_{0}\left(t\right)r\left(t\right)\mathrm{d}t\label{eq:money_market}
+\end{equation}
+
+\end_inset
+
+As usual, all SDEs should be interpreted in their integral form, which has
+ a mathematical meaning.
+ In the case of the equation above, given the nonrandom intial condition
+ 
+\begin_inset Formula $P_{0}\left(t\right)=P_{0}$
+\end_inset
+
+, the evolution of 
+\begin_inset Formula $P_{0}\left(t\right)$
+\end_inset
+
+ is described by the equation
+\begin_inset Formula 
+\begin{equation}
+P_{0}\left(t\right)=P_{0}+\int_{0}^{t}P_{0}\left(t\right)r\left(t\right)\mathrm{d}t
+\end{equation}
+
+\end_inset
+
+This equation can be easily solved by computing the differential of 
+\begin_inset Formula $\ln\left(P_{0}\left(t\right)\right)$
+\end_inset
+
+ using Itô's formula and integrating to get the explicity solution
+\begin_inset Formula 
+\begin{equation}
+P_{0}\left(t\right)=P_{0}\exp\left(\int_{0}^{t}r\left(t\right)\mathrm{d}t\right)
+\end{equation}
+
+\end_inset
+
+Since the interest rate is always positive, we see 
+\begin_inset Formula $P_{0}\left(t\right)$
+\end_inset
+
+ is a monotonically increasing function, thus our future gains are guaranteed.
+ If the 
+\begin_inset Formula $r\left(t\right)$
+\end_inset
+
+ is known, they can even be calculated exactly.
+ This kind of increasing is called 
+\emph on
+continous compounding
+\emph default
+.
+\end_layout
+
+\begin_layout Standard
+In the case of the stock, we assume its price 
+\begin_inset Formula $P_{1}\left(t\right)$
+\end_inset
+
+ follows the SDE of a 
+\emph on
+Generalized Geometric Brownian Motion
+\emph default
+
+\begin_inset Formula 
+\begin{equation}
+\mathrm{d}P_{1}\left(t\right)=P_{1}\left(t\right)\mu\left(t\right)\mathrm{d}t+P_{1}\left(t\right)\sigma\left(t\right)\mathrm{d}W(t)\label{eq:genral-geo-brown-mot}
+\end{equation}
+
+\end_inset
+
+where 
+\begin_inset Formula $\mu\left(t\right)$
+\end_inset
+
+
+\begin_inset CommandInset nomenclature
+LatexCommand nomenclature
+prefix "mu"
+symbol "$\\mu\\left(t\\right)$"
+description "The stock's mean rate of return."
+literal "true"
+
+\end_inset
+
+ is the 
+\emph on
+mean rate of return
+\emph default
+ of the stock (usually measured in 
+\begin_inset Formula $\left[\unit{years}^{-1}\right]$
+\end_inset
+
+) and 
+\begin_inset Formula $\sigma\left(t\right)$
+\end_inset
+
+
+\begin_inset CommandInset nomenclature
+LatexCommand nomenclature
+prefix "sigma"
+symbol "$\\sigma\\left(t\\right)$"
+description "The stock's volatility."
+literal "true"
+
+\end_inset
+
+ is the stock's 
+\emph on
+volatility
+\emph default
+ (usually measured in 
+\begin_inset Formula $\left[\unit{years}^{-\nicefrac{1}{2}}\right]$
+\end_inset
+
+).
+ Both of these functions can be constant or time varying, or even random
+ process that are adapted to the filtration.
+ As before, equation
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:genral-geo-brown-mot"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ should be interpreted in its integral form, which is (given the non-random
+ intial condtion for 
+\begin_inset Formula $P_{1}\left(0\right)$
+\end_inset
+
+)
+\begin_inset Formula 
+\begin{equation}
+P_{1}\left(t\right)=P_{1}(0)+\int_{0}^{t}P_{1}\left(t\right)\mu\left(t\right)\mathrm{d}t+\int_{0}^{t}P_{1}\left(t\right)\sigma\left(t\right)\mathrm{d}W(t)
+\end{equation}
+
+\end_inset
+
+where the right integral is the 
+\emph on
+Itô Integral
+\emph default
+ with respect to the brownian motion.
+ This SDE can also be solved by using Itô's formula to calculate the differetial
+ of 
+\begin_inset Formula $\ln\left(P_{1}\left(t\right)\right)$
+\end_inset
+
+ and integrating to give the explicit form
+\begin_inset Formula 
+\begin{equation}
+P_{1}\left(t\right)=P_{1}\left(0\right)\exp\left(\int_{0}^{t}\left(\mu\left(t\right)-\frac{1}{2}\sigma^{2}\left(t\right)\right)\mathrm{d}t+\int_{0}^{t}\sigma\left(t\right)\mathrm{d}W(t)\right)\label{eq:stock-price}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+In the following we will mainly use a market model with 
+\begin_inset Formula $r\left(t\right),\mu\left(t\right)$
+\end_inset
+
+ and 
+\begin_inset Formula $\sigma\left(t\right)$
+\end_inset
+
+ that are constant.
+ The stock model with constant 
+\begin_inset Formula $\mu$
+\end_inset
+
+ and 
+\begin_inset Formula $\sigma$
+\end_inset
+
+ is the famous 
+\emph on
+Black-Scholes Model
+\emph default
+ from
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset CommandInset citation
+LatexCommand citep
+key "black1973pricing"
+literal "false"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Subsubsection
+The Wealth Process
+\end_layout
+
+\begin_layout Standard
+We now define the 
+\emph on
+wealth process
+\emph default
+ 
+\begin_inset Formula $X\left(t\right)$
+\end_inset
+
+
+\begin_inset CommandInset nomenclature
+LatexCommand nomenclature
+prefix "X"
+symbol "$X\\left(t\\right)$"
+description "The wealth process."
+literal "true"
+
+\end_inset
+
+.
+ This process measures the amount of money our investor have during the
+ trading period.
+ As we said in the previous section, we assume the investor starts with
+ a fixed, nonrandom amount of wealth 
+\begin_inset Formula $X\left(0\right)$
+\end_inset
+
+.
+ Complied with the self-financing condition, the dynamics of the wealth
+ process are captures by the SDE
+\begin_inset Formula 
+\begin{equation}
+\mathrm{d}X\left(t\right)=\phi\left(t\right)\mathrm{d}P_{1}\left(t\right)+\left(X\left(t\right)-\phi\left(t\right)P_{1}\left(t\right)\right)r\left(t\right)\mathrm{d}t\label{eq:wealth}
+\end{equation}
+
+\end_inset
+
+we motivate this equation.
+ This equation detremines the source of the change in the wealth value over
+ a small time interval.
+ According to this equation there are two reasons for the change of wealth.
+ The first one is due to the change in the stock price 
+\begin_inset Formula $\mathrm{d}P_{1}(t)$
+\end_inset
+
+.
+ Since our investor holds 
+\begin_inset Formula $\phi\left(t\right)$
+\end_inset
+
+ shares of the stock at time 
+\begin_inset Formula $t$
+\end_inset
+
+, the change in wealth due to the change in the price of the stock is exactly
+ the left summand.
+\end_layout
+
+\begin_layout Standard
+For the second summand, recall from the previous section that all the wealth
+ that 
+\emph on
+is not
+\emph default
+ invested in stocks, is invested in the money market account.
+ This amount, at time 
+\begin_inset Formula $t$
+\end_inset
+
+, is exactly 
+\begin_inset Formula $X\left(t\right)-\phi\left(t\right)P_{1}\left(t\right)$
+\end_inset
+
+, thus the right summand is actually equation
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:money_market"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ where the amount invested is 
+\begin_inset Formula $X\left(t\right)-\phi\left(t\right)P_{1}\left(t\right)$
+\end_inset
+
+ and not 
+\begin_inset Formula $P_{0}\left(t\right)$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+Instead of track the number of shares the investor has of the stock at every
+ moment 
+\begin_inset Formula $\phi\left(t\right)$
+\end_inset
+
+, a more used notation for the trading startegy is in terms of relative
+ wealth.
+ Specificaly, we mark 
+\begin_inset Formula $\pi\left(t\right)$
+\end_inset
+
+
+\begin_inset CommandInset nomenclature
+LatexCommand nomenclature
+prefix "pi"
+symbol "$\\pi\\left(t\\right)$"
+description "The fraction of wealth invested in the stock."
+literal "true"
+
+\end_inset
+
+ as the relative amount of wealth invested in the stock out of all the wealth
+ the investor has, or mathematically
+\begin_inset Formula 
+\begin{equation}
+\pi\left(t\right)=\frac{\phi\left(t\right)\cdot P_{1}\left(t\right)}{X\left(t\right)}\label{eq:pi}
+\end{equation}
+
+\end_inset
+
+We see that for each point in time, this equation gives a one-to-one relation
+ between 
+\begin_inset Formula $\phi\left(t\right)$
+\end_inset
+
+ and 
+\begin_inset Formula $\pi\left(t\right)$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Subsubsection
+Notes: Modeling Stock Prices with Brownain Motion
+\end_layout
+
+\begin_layout Standard
+Brownian motion has many desirable properties for the continous model of
+ stock prices.
+ First, it has no tendency to rise or fall, that is reflected in its 
+\emph on
+martingale
+\emph default
+ property
+\begin_inset Formula 
+\[
+\mathbb{E}\left[W\left(t\right)\mid\mathcal{F}_{s}\right]=W\left(s\right)\quad\forall0\le s\le t\le T
+\]
+
+\end_inset
+
+and also 
+\begin_inset Formula $\mathbb{E}\left[W\left(t\right)\right]=0$
+\end_inset
+
+ for all 
+\begin_inset Formula $0\le t$
+\end_inset
+
+.
+ Thus Brownian motion has a very 
+\begin_inset Quotes eld
+\end_inset
+
+random
+\begin_inset Quotes erd
+\end_inset
+
+ characteristic: it has no tendency to rise or fall, and at every moment,
+ our best estimate of its future value is its present value.
+\end_layout
+
+\begin_layout Standard
+Brownian motion became popular after Einstein's celebrated paper on the
+ mechanichs of small particles in 1905.
+ But in fact, Brownian motion was used 5 years earlier, In the PhD thesis
+ of Louis Bachelier, 
+\begin_inset Quotes eld
+\end_inset
+
+Théorie de la spéculation
+\begin_inset Quotes erd
+\end_inset
+
+.
+ Bachelier suggested to model stock prices by Brownian motions with drifts,
+ that is
+\begin_inset Formula 
+\[
+P\left(t\right)=\mu t+\sigma W\left(t\right)
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+So the stock price has a determinstic component (
+\begin_inset Formula $\mu t$
+\end_inset
+
+) and a random component (
+\begin_inset Formula $\sigma W\left(t\right)$
+\end_inset
+
+).
+ Assuming prices behave like above, Bachelier suggested methods for pricing
+ options.
+ The main drawback of Bachelier's model, is that stock prices have positive
+ probability to reach negative values, which of course doesn't correspond
+ with the real life.
+ His work was not well received in the mathematicl community, especially
+ because it was on of the first work to incorporate advanced mathematics
+ in the finance domain.
+ Nonetheless, Bachelier's work is considered the cornerstone of financial
+ mathematics.
+\end_layout
+
+\begin_layout Standard
+It wasn't until 1973 that the problem of modeling stock prices had a breakthroug
+h.
+ Fisher Black and Myron Scholes proposed the Geometric Brownian Motion model
+ for stock prices, which is equation
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:genral-geo-brown-mot"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ with constant parameters.
+ By looking at the solution in
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:stock-price"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ we can see the stock price is surely positive.
+ Also it has the nice features of the exponent function, where its change
+ is proportional to its price.
+ This is a desired properties as stock with a high price tend to change
+ in much larger quantities compared to stock with a low price.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Newpage newpage
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Optimizing Portfolios
+\end_layout
+
+\begin_layout Standard
+We can now define a variant of the Portfolio Optimization problem.
+ We consider our investor that starts at time 
+\begin_inset Formula $0$
+\end_inset
+
+ with $
+\begin_inset Formula $X\left(0\right)$
+\end_inset
+
+ and invests it in the money market account and the stock over the time
+ period 
+\begin_inset Formula $T$
+\end_inset
+
+.
+ The goal we are aiming for is to maximize some known function of the terminal
+ wealth 
+\begin_inset Formula $U\left(X\left(T\right)\right)$
+\end_inset
+
+
+\begin_inset CommandInset nomenclature
+LatexCommand nomenclature
+prefix "U"
+symbol "$U(x)$"
+description "A utility function."
+literal "true"
+
+\end_inset
+
+.
+ This is of course a random variable, and its distribution depends on 
+\begin_inset Formula $r\left(t\right),\mu\left(t\right),\sigma\left(t\right)$
+\end_inset
+
+ and 
+\begin_inset Formula $\phi\left(t\right)$
+\end_inset
+
+.
+ Thus maximizing this function of the terminal wealth is not well defined,
+ and a more meaningful goal will be to maximize its expected value 
+\begin_inset Formula $\mathbb{E}\left[U\left(X\left(T\right)\right)\right]$
+\end_inset
+
+.
+ It is well known for more than a decade, that the maximization of wealth
+ is not a good measure of peoples' desires.
+ A good example is the St.
+ Petersburg Paradox that was first analyzed by Daniel Bernoulli in 1738.
+ **more summary**
+\end_layout
+
+\begin_layout Subsection
+Utility Functions
+\end_layout
+
+\begin_layout Standard
+The utility function, as described in
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset CommandInset citation
+LatexCommand citep
+key "markovitz1959portfolio"
+literal "false"
+
+\end_inset
+
+ 
+\begin_inset Quotes eld
+\end_inset
+
+simply represents the degree to which the individual is willing to take
+ risks for outcomes presnted by the wealth
+\begin_inset Quotes erd
+\end_inset
+
+.
+ More formally
+\end_layout
+
+\begin_layout Definition
+\begin_inset CommandInset label
+LatexCommand label
+name "Utility-Functions"
+
+\end_inset
+
+Utility Functions
+\end_layout
+
+\begin_layout Definition
+A function 
+\begin_inset Formula $U:\left(0,\infty\right)\to\mathbb{R}$
+\end_inset
+
+ that satisfies the following conditions:
+\end_layout
+
+\begin_layout Enumerate
+Strictly concave and continously differntiable.
+\end_layout
+
+\begin_layout Enumerate
+\begin_inset Formula $\lim_{x\to0^{+}}U'\left(x\right)=\infty$
+\end_inset
+
+ and 
+\begin_inset Formula $\lim_{x\to\infty}U'\left(x\right)=0$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+The first condition on the derivative reflects the hate to loose money.
+ As the wealth gets closer to zero, every dollar lost implies a huge loss
+ in utility.
+ The second condtion, on the other hand, reflects the indifference in wining
+ a great amount of money.
+ For most of us, gaining 
+\begin_inset Formula $\$1,000,000$
+\end_inset
+
+ or gaining 
+\begin_inset Formula $\$1,000,001$
+\end_inset
+
+ will result in the same joy.
+ This is the property represented by this limit.
+ Some examples for classic utility function satisfying those condtions are:
+ 
+\begin_inset Formula $\ln\left(x\right),\sqrt{x}$
+\end_inset
+
+ and 
+\begin_inset Formula $x^{\alpha}$
+\end_inset
+
+ where 
+\begin_inset Formula $0<\alpha<1$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+It is important to know that utility functions are defined up to affine
+ transformations.
+ Hence an important feature of a utility function is its
+\emph on
+ Risk Aversion
+\emph default
+ that is defined to be 
+\begin_inset Formula $-\frac{U''\left(x\right)}{U'\left(x\right)}$
+\end_inset
+
+.
+ The higher the curvature of 
+\begin_inset Formula $U$
+\end_inset
+
+, the higher (and positive) the risk aversion.
+ If 
+\begin_inset Formula $U$
+\end_inset
+
+ is convex, then the utility signifies 
+\begin_inset Quotes eld
+\end_inset
+
+risk-loving
+\begin_inset Quotes erd
+\end_inset
+
+ and the risk aversion will be negative.
+\end_layout
+
+\begin_layout Standard
+Since risk aversion has units of 
+\begin_inset Formula $\left[\unit{\$}^{-1}\right]$
+\end_inset
+
+, a different measure used to distinguish utility function is the 
+\emph on
+Relative Risk Aversion
+\emph default
+ that is defined to be the risk averions times the wealth 
+\begin_inset Formula $x$
+\end_inset
+
+.
+ It has similar properties to the risk aversion measure, but is unit-less
+ and thus more universal.
+ An important class of utility functions is those with Constant Relative
+ Risk Aversion, or more compactly CRRA
+\begin_inset CommandInset nomenclature
+LatexCommand nomenclature
+symbol "CRRA"
+description "Constant Relative Risk Aversion"
+literal "false"
+
+\end_inset
+
+.
+ For instance the utility 
+\begin_inset Formula $U\left(x\right)=\ln x$
+\end_inset
+
+ has relative risk aversion of 
+\begin_inset Formula $1$
+\end_inset
+
+ for all 
+\begin_inset Formula $x\in\left(0,\infty\right)$
+\end_inset
+
+.
+ Also the utility 
+\begin_inset Formula $U\left(x\right)=\sqrt{x}$
+\end_inset
+
+ has utility of 
+\begin_inset Formula $\nicefrac{1}{2}$
+\end_inset
+
+ for all 
+\begin_inset Formula $x\in\left(0,\infty\right)$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Subsection
+The Portfolio Optimization Problem
+\end_layout
+
+\begin_layout Standard
+Now since the market parameters 
+\begin_inset Formula $r\left(t\right),\mu\left(t\right),\sigma\left(t\right)$
+\end_inset
+
+ cannot be altered by our investor's will, The search space for maximization
+ of the expected utility is over the trading strategies, 
+\begin_inset Formula $\phi\left(t\right)$
+\end_inset
+
+ or 
+\begin_inset Formula $\pi\left(t\right)$
+\end_inset
+
+.
+ Thus the Portfolio Optimization problem we will be dealing with is:
+\end_layout
+
+\begin_layout Definition
+The Portfolio Maximization Problem
+\end_layout
+
+\begin_layout Definition
+Given a utility function 
+\begin_inset Formula $U\left(x\right)$
+\end_inset
+
+ satisfiying defintion
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Utility-Functions"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+, market parameters 
+\begin_inset Formula $r\left(t\right),\mu\left(t\right),\sigma\left(t\right)$
+\end_inset
+
+ and a horizon 
+\begin_inset Formula $T$
+\end_inset
+
+, find the random process 
+\begin_inset Formula $\left\{ \pi\left(t\right)\right\} _{t=0}^{T}$
+\end_inset
+
+ that solves
+\begin_inset Formula 
+\begin{equation}
+\max_{\pi\left(t\right)}\mathbb{E}\left[U\left(X\left(T\right)\right)\right]\label{eq:objective}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+For obvious reasons, there are many trading strategies 
+\begin_inset Formula $\pi\left(t\right)$
+\end_inset
+
+ that are by no means good strategies, thus sometimes the search space is
+ narrowed to the following: Given a positive intial wealth 
+\begin_inset Formula $X\left(0\right)=x>0$
+\end_inset
+
+ , all the adpated strategies 
+\begin_inset Formula $\pi\left(t\right)$
+\end_inset
+
+ such that 
+\begin_inset Formula $X\left(t\right)\ge0$
+\end_inset
+
+ almost surely for all 
+\begin_inset Formula $t\in\left[0,T\right]$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Subsection
+Solutions to the Portfolio Optimization Problem
+\end_layout
+
+\begin_layout Standard
+The first serious attempt to solve the discussed problem was given by
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset CommandInset citation
+LatexCommand citep
+key "merton1969lifetime"
+literal "false"
+
+\end_inset
+
+.
+ In this paper, Merton suggests a method based on the theory of stochastic
+ control.
+\end_layout
+
+\begin_layout Standard
+The second known method for solving the problem is widely called the 
+\emph on
+Martingale Method
+\emph default
+.
+ The origin of the name is in the Martingale Representation Theorem, and
+ in the fact the discounted wealth process is a martingale under the risk-neutra
+l measure.
+ Loosely speaking this method first detemines the optimal terminal value,
+ i.e., solving for the random variable 
+\begin_inset Formula $B$
+\end_inset
+
+ that solves
+\begin_inset Formula 
+\[
+\max_{B}\mathbb{E}\left[U\left(X\left(B\right)\right)\right]
+\]
+
+\end_inset
+
+then it constructs the trading strategy 
+\begin_inset Formula $\pi\left(t\right)$
+\end_inset
+
+ such that 
+\begin_inset Formula $X\left(T\right)=B$
+\end_inset
+
+ almost surely.
+ The existence of this trading strategy is justified by the Martingale Represent
+ation Theorem.
+\end_layout
+
+\begin_layout Standard
+Finding an explicity from for 
+\begin_inset Formula $\pi\left(t\right)$
+\end_inset
+
+ given 
+\begin_inset Formula $B$
+\end_inset
+
+ is the hard problem.
+ We will present one closed form solution based on
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset CommandInset citation
+LatexCommand citep
+key "karatzas1987optimal"
+literal "false"
+
+\end_inset
+
+.
+ Assuming equations
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:money_market"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+,
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:genral-geo-brown-mot"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ hold with constant market parameters 
+\begin_inset Formula $r,\mu,\sigma$
+\end_inset
+
+ and and assume 
+\begin_inset Formula $U$
+\end_inset
+
+ is a CRRA utility function with 
+\begin_inset Formula $R$
+\end_inset
+
+ denoting its relative risk aversion measure computed by 
+\begin_inset Formula $-\frac{U''\left(x\right)x}{U'\left(x\right)}$
+\end_inset
+
+.
+ Also denote the 
+\emph on
+market price of risk
+\emph default
+ 
+\begin_inset Formula $\theta=\frac{\mu-r}{\sigma}$
+\end_inset
+
+
+\begin_inset CommandInset nomenclature
+LatexCommand nomenclature
+prefix "theta"
+symbol "$\\theta$"
+description "The market price of risk."
+literal "false"
+
+\end_inset
+
+.
+ Then the optimal trading strategy at time 
+\begin_inset Formula $t$
+\end_inset
+
+ is given by
+\begin_inset Formula 
+\begin{equation}
+\pi\left(t\right)=\frac{\theta}{R\sigma}\label{eq:optimal}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+In section
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "sec:Results"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ we will demonstrate quantitatively this strategy's supremacy.
+ Note that in this case the optimal portfolio is acheivied by keeping the
+ amount of money in the stock at a constant ratio compared to the total
+ wealth.
+ This trading strategy, though is not so simple as it demands as to rebalance
+ our portfolio at every given moment so that the fraction of wealth in the
+ stock will be constant.
+ (As opposed to constant 
+\begin_inset Formula $\phi\left(t\right)$
+\end_inset
+
+.)
+\end_layout
+
+\begin_layout Standard
+\begin_inset Newpage newpage
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Simulating Portfolios with Monte Carlo
+\end_layout
+
+\begin_layout Standard
+In this section we will discuss how to evaluate the value of 
+\begin_inset Formula $\mathbb{E}\left[U\left(X\left(T\right)\right)\right]$
+\end_inset
+
+ given all the related parameters under the model discussed in
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "subsec:The-Mathematical-Model"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+.
+ **more summary**
+\end_layout
+
+\begin_layout Subsection
+Simulating SDEs
+\end_layout
+
+\begin_layout Standard
+In this section we will consider the general SDE given by
+\begin_inset Formula 
+\begin{equation}
+\mathrm{d}S\left(t\right)=\alpha\left(t,S\left(t\right)\right)\mathrm{d}t+\beta\left(t,S\left(t\right)\right)\mathrm{d}W\left(t\right)\label{eq:SDE}
+\end{equation}
+
+\end_inset
+
+together with the nonrandom initial condition
+\begin_inset Formula 
+\begin{equation}
+S\left(0\right)=S_{0}\label{eq:initial_cond}
+\end{equation}
+
+\end_inset
+
+where 
+\begin_inset Formula $W\left(t\right)$
+\end_inset
+
+ is a Brownian motion.
+\end_layout
+
+\begin_layout Standard
+Under mild conditions on 
+\begin_inset Formula $\alpha$
+\end_inset
+
+ and 
+\begin_inset Formula $\beta$
+\end_inset
+
+, the problem specified by
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:SDE"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ and
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:initial_cond"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ has a unique solution, a random process 
+\begin_inset Formula $S\left(t\right)$
+\end_inset
+
+.
+ A random process which is a soultion to problem like this is usually called
+ a 
+\emph on
+diffusion process
+\emph default
+, and 
+\begin_inset Formula $\beta$
+\end_inset
+
+ is called the coefficient of diffusion.
+\end_layout
+
+\begin_layout Standard
+We would like in this section divise a method to sample paths of this process
+ 
+\begin_inset Formula $S\left(t\right)$
+\end_inset
+
+.
+ The most common way is to use the celebrated 
+\emph on
+Euler's Method
+\emph default
+.
+ For this method, we consider a time period we are intrested in the value
+ of 
+\begin_inset Formula $S$
+\end_inset
+
+, 
+\begin_inset Formula $\left[0,T\right]$
+\end_inset
+
+, and discretize it to 
+\begin_inset Formula $M$
+\end_inset
+
+ points 
+\begin_inset Formula $\left\{ t_{n}\right\} _{n=0}^{M-1}$
+\end_inset
+
+ such that
+\begin_inset Formula 
+\[
+0=t_{0}<t_{1}<\dots<t_{M-1}=T.
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The points are usually chosen such that 
+\begin_inset Formula $t_{n+1}-t_{n}\triangleq\Delta t$
+\end_inset
+
+
+\begin_inset CommandInset nomenclature
+LatexCommand nomenclature
+prefix "delta t"
+symbol "$\\Delta t$"
+description "The time difference between two points in the discretization grid."
+literal "true"
+
+\end_inset
+
+ is constant for all 
+\begin_inset Formula $0\le n<M-1$
+\end_inset
+
+.
+ We approximate equation
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:SDE"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ for every 
+\begin_inset Formula $0\le n<M-1$
+\end_inset
+
+ as follows
+\begin_inset Formula 
+\[
+\mathrm{d}S\left(t\right)\approx S\left(t_{n+1}\right)-S\left(t_{n}\right)
+\]
+
+\end_inset
+
+and
+\begin_inset Formula 
+\[
+\begin{aligned}\alpha\left(t,S\left(t\right)\right)\mathrm{d}t & +\beta\left(t,S\left(t\right)\right)\mathrm{d}W\left(t\right)\approx\\
+ & \alpha\left(t_{n},S\left(t_{n}\right)\right)\Delta t+\beta\left(t_{n},S\left(t_{n}\right)\right)\left(W\left(t_{n+1}\right)-W\left(t_{n}\right)\right)
+\end{aligned}
+\]
+
+\end_inset
+
+Using the more compact notation 
+\begin_inset Formula $S\left(t_{n}\right)\triangleq S_{n}$
+\end_inset
+
+ we get the approximated SDE
+\begin_inset Formula 
+\begin{equation}
+S_{n+1}-S_{n}=\alpha\left(t_{n},S_{n}\right)\Delta t+\beta\left(t_{n},S_{n}\right)\left(W\left(t_{n+1}\right)-W\left(t_{n}\right)\right)
+\end{equation}
+
+\end_inset
+
+together with the initial condition on 
+\begin_inset Formula $S_{0}$
+\end_inset
+
+.
+ Since 
+\begin_inset Formula $\alpha$
+\end_inset
+
+ and 
+\begin_inset Formula $\beta$
+\end_inset
+
+ are known functions and 
+\begin_inset Formula $\Delta t$
+\end_inset
+
+ is chosen by us, we are left to determine how to deal with the term 
+\begin_inset Formula $\left(W\left(t_{n+1}\right)-W\left(t_{n}\right)\right)$
+\end_inset
+
+.
+ Fortunately, by the defintion of Brownian motion, we know that the differences
+ between any two points 
+\begin_inset Formula $0\le s<t$
+\end_inset
+
+, 
+\begin_inset Formula $W\left(t\right)-W\left(s\right)$
+\end_inset
+
+ are normally distributed with mean 0 and variance 
+\begin_inset Formula $t-s$
+\end_inset
+
+, and are also independent on the information up to time 
+\begin_inset Formula $s$
+\end_inset
+
+, 
+\begin_inset Formula $\mathcal{F}_{s}$
+\end_inset
+
+.
+ Thus the differences 
+\begin_inset Formula $W\left(t_{1}\right)-W\left(t_{0}\right),W\left(t_{2}\right)-W\left(t_{1}\right),\dots$
+\end_inset
+
+ can be substituted by 
+\emph on
+independent
+\emph default
+ normal random variables with mean 0 and variance 
+\begin_inset Formula $\Delta t$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+To conclude, in order to simulate a path given by the dynamics in
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:SDE"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ and the intial condtion
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:initial_cond"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+ over the interval 
+\begin_inset Formula $\left[0,T\right]$
+\end_inset
+
+, we divide the interval into 
+\begin_inset Formula $M$
+\end_inset
+
+ points 
+\begin_inset Formula $t_{0},\dots,t_{M-1}$
+\end_inset
+
+, and sample 
+\begin_inset Formula $M-1$
+\end_inset
+
+ standard normal random variables 
+\begin_inset Formula $\left\{ \varepsilon_{n}\right\} _{n=1}^{M-1}$
+\end_inset
+
+.
+ We set 
+\begin_inset Formula $S_{0}$
+\end_inset
+
+ by the initial condtion, and compute 
+\begin_inset Formula $S_{1},S_{2},\dots,S_{M-1}$
+\end_inset
+
+ by the recursive formula
+\begin_inset Formula 
+\begin{equation}
+S_{n+1}=S_{n}\alpha\left(t_{n},S_{n}\right)\Delta t+\beta\left(t_{n},S_{n}\right)\sqrt{\Delta t}\cdot\varepsilon_{n+1}
+\end{equation}
+
+\end_inset
+
+This scheme is also known in the literature as the 
+\emph on
+Euler-Maruyama scheme
+\emph default
+.
+\end_layout
+
+\begin_layout Subsection
+Simulating the Assets and the Wealth
+\end_layout
+
+\begin_layout Standard
+Armed with this knowledge, we can proceed to estimate paths of the stock
+ price, the money market account and the wealth process.
+ In the following we will use similar notation as used above
+\begin_inset Formula 
+\[
+r\left(t_{n}\right)=r_{n}\quad\mu\left(t_{n}\right)=\mu_{n}\quad\sigma\left(t_{n}\right)=\sigma_{n}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Paragraph
+The Money Market Account
+\end_layout
+
+\begin_layout Standard
+For the market money account, it is common to choose the initial condition
+ 
+\begin_inset Formula $P_{0}\left(0\right)=1$
+\end_inset
+
+.
+ Then, its SDE (equation
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:money_market"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+) can be approximated as 
+\begin_inset Formula 
+\begin{equation}
+P_{0,n+1}=P_{0,n}+r_{n}P_{0,n}\Delta t=P_{0,n}\left(1+r_{n}\Delta t\right)\label{eq:approx_market}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+This specific reucrsion can be solved with the initial condition, yielding
+ the relation
+\begin_inset Formula 
+\[
+P_{0,n}=\prod_{k=0}^{n-1}\left(1+r_{k}\Delta t\right)
+\]
+
+\end_inset
+
+Note that if we are given the sequence 
+\begin_inset Formula $\left\{ r_{n}\right\} $
+\end_inset
+
+ in advance, we can calculate the whole path for 
+\begin_inset Formula $P_{0}$
+\end_inset
+
+ using a simple cumulative product operation as NumPy's 
+\family typewriter
+cumprod
+\family default
+.
+\end_layout
+
+\begin_layout Paragraph
+The Stock
+\end_layout
+
+\begin_layout Standard
+For the stock price, its SDE (equation
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:genral-geo-brown-mot"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+) can be approximated as
+\begin_inset Formula 
+\begin{align}
+P_{1,n+1} & =P_{1,n}+\mu_{n}P_{1,n}\Delta t+\sigma_{n}P_{1,n}\sqrt{\Delta t}\varepsilon_{n+1}\\
+ & =P_{1,n}\left(1+\mu_{n}\Delta t+\sigma_{n}\sqrt{\Delta t}\varepsilon_{n+1}\right)\label{eq:approx-stock}
+\end{align}
+
+\end_inset
+
+where 
+\begin_inset Formula $\left\{ \varepsilon_{n}\right\} _{n=1}^{M-1}$
+\end_inset
+
+ is a sequence of independent standard normal RVs.
+ This recursion can also be solved with the intial condition 
+\begin_inset Formula 
+\[
+P_{1,n}=P_{1}\left(0\right)\prod_{k=0}^{n-1}\left(1+\mu_{k}\Delta t+\sigma_{k}\sqrt{\Delta t}\varepsilon_{k+1}\right)
+\]
+
+\end_inset
+
+So given the sequences 
+\begin_inset Formula $\left\{ \mu_{n}\right\} $
+\end_inset
+
+ and 
+\begin_inset Formula $\left\{ \sigma_{n}\right\} $
+\end_inset
+
+ in advance (we can simulate 
+\begin_inset Formula $\left\{ \varepsilon_{n}\right\} $
+\end_inset
+
+ in advance obviously), we can calculate the whole path for 
+\begin_inset Formula $P_{1}$
+\end_inset
+
+ using cumulative product as in the money market account.
+\end_layout
+
+\begin_layout Paragraph
+The Wealth Process
+\end_layout
+
+\begin_layout Standard
+The wealth process satisfy the SDE given by
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:wealth"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+, which we will give now again for further development
+\begin_inset Formula 
+\[
+\mathrm{d}X\left(t\right)=\phi\left(t\right)\mathrm{d}P_{1}\left(t\right)+\left(X\left(t\right)-\phi\left(t\right)P_{1}\left(t\right)\right)r\left(t\right)\mathrm{d}t
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+This equation is approximated by the recursive formula
+\begin_inset Formula 
+\[
+X_{n+1}=X_{n}+\phi_{n}\left(P_{1,n+1}-P_{1,n}\right)+\left(X_{n}-\phi_{n}P_{1,n}\right)r_{n}\Delta t
+\]
+
+\end_inset
+
+We can substitute
+\begin_inset Formula 
+\[
+\phi_{n}=\pi_{n}\frac{X_{n}}{P_{1,n}}
+\]
+
+\end_inset
+
+ and get an equivalent formula
+\begin_inset Formula 
+\begin{align}
+X_{n+1} & =X_{n}+X_{n}\pi_{n}\frac{P_{1,n+1}-P_{1,n}}{P_{1,n}}+\left(X_{n}-\pi_{n}X_{n}\right)r_{n}\Delta t\\
+ & =X_{n}\left(1+\pi_{n}\frac{P_{1,n+1}-P_{1,n}}{P_{1,n}}+\left(1-\pi_{n}\right)r_{n}\Delta t\right)\label{eq:approx_wealth}
+\end{align}
+
+\end_inset
+
+Thus again, given the intial wealth 
+\begin_inset Formula $X_{0}$
+\end_inset
+
+ we can write an explicit formula for the approximated wealth process
+\begin_inset Formula 
+\[
+X_{n}=X_{0}\prod_{k=0}^{n-1}\left(1+\pi_{k}\frac{P_{1,k+1}-P_{1,k}}{P_{1,k}}+\left(1-\pi_{k}\right)r_{k}\Delta t\right)
+\]
+
+\end_inset
+
+and given 
+\begin_inset Formula $\left\{ \pi_{n}\right\} $
+\end_inset
+
+ and 
+\begin_inset Formula $\left\{ P_{1,n}\right\} $
+\end_inset
+
+ and 
+\begin_inset Formula $\left\{ r_{n}\right\} $
+\end_inset
+
+ we can calculate the whole path for 
+\begin_inset Formula $X_{n}$
+\end_inset
+
+ with a cumulative product operation.
+ This time however we should note that 
+\begin_inset Formula $\pi\left(t\right)$
+\end_inset
+
+, in general, can depend on the value of the portfolio at time 
+\begin_inset Formula $t$
+\end_inset
+
+, thus assuming we have 
+\begin_inset Formula $\left\{ \pi_{n}\right\} $
+\end_inset
+
+ before calculating 
+\begin_inset Formula $\left\{ X_{n}\right\} $
+\end_inset
+
+ might not be feasible.
+ For the case of constant market and CRRA, 
+\begin_inset Formula $\pi\left(t\right)$
+\end_inset
+
+ is constant and thus doesn't depend on the portfolio value.
+\end_layout
+
+\begin_layout Subsection
+A General Algorithm
+\end_layout
+
+\begin_layout Standard
+Now that we know how to sample assets prices paths and how to compute the
+ wealth process out of them, we can devise a general Monte Carlo algorithm
+ for estimating 
+\begin_inset Formula $\mathbb{E}\left(U\left(X\left(T\right)\right)\right)$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Enumerate
+First determine the spliting of the interval 
+\begin_inset Formula $\left[0,T\right]$
+\end_inset
+
+ to 
+\begin_inset Formula $M$
+\end_inset
+
+ points.
+\end_layout
+
+\begin_layout Enumerate
+Fix the number of samples that will be used for the estimation 
+\begin_inset Formula $N$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Enumerate
+Initialize sum 
+\begin_inset Formula $=0$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Enumerate
+For 
+\begin_inset Formula $N$
+\end_inset
+
+ iterations:
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+Sample paths of 
+\begin_inset Formula $P_{0}\left(t\right)$
+\end_inset
+
+ and 
+\begin_inset Formula $P_{1}\left(t\right)$
+\end_inset
+
+ of length 
+\begin_inset Formula $M$
+\end_inset
+
+ according to
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:approx_market"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+,
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:approx-stock"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Enumerate
+Compute the path of 
+\begin_inset Formula $\pi\left(t\right)$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Enumerate
+Compute the path of 
+\begin_inset Formula $X\left(t\right)$
+\end_inset
+
+ according to
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:approx_wealth"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Enumerate
+sum 
+\begin_inset Formula $=$
+\end_inset
+
+ sum 
+\begin_inset Formula $+$
+\end_inset
+
+ 
+\begin_inset Formula $U\left(X\left(T\right)\right)$
+\end_inset
+
+.
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+Return 
+\begin_inset Formula $\frac{\mathrm{sum}}{N}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Newpage newpage
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Results
+\begin_inset CommandInset label
+LatexCommand label
+name "sec:Results"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+In this section some results acheived with this simulation method will be
+ shown.
+ The equations from the previous section are implement in the PortOpt library.
+\end_layout
+
+\begin_layout Standard
+A constant market model is considered with typical parameters
+\begin_inset Formula 
+\[
+r=0.01\,\left[\unit{years}^{-1}\right]\qquad\mu=0.1\left[\unit{years}^{-1}\right]\qquad\sigma=0.2\left[\unit{years}^{-\frac{1}{2}}\right]
+\]
+
+\end_inset
+
+The investing period is over a year 
+\begin_inset Formula $T=1\left[\unit{years}\right]$
+\end_inset
+
+ with 
+\begin_inset Formula $\Delta t=\frac{1}{365}\left[\unit{years}\right]$
+\end_inset
+
+, i.e, a day.
+\end_layout
+
+\begin_layout Standard
+Two utility functions will be examined:
+\end_layout
+
+\begin_layout Enumerate
+\begin_inset Formula $U\left(x\right)=\ln x$
+\end_inset
+
+ and
+\end_layout
+
+\begin_layout Enumerate
+\begin_inset Formula $U\left(x\right)=x$
+\end_inset
+
+ – not a valid utility according to the definition.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+We assume, for simplicty that both the money market account and the stock
+ have initial price of 
+\begin_inset Formula $\$1$
+\end_inset
+
+.
+ Also our investor starts with initial wealth of 
+\begin_inset Formula $\$1$
+\end_inset
+
+.
+ This helps to determine relative gains easily
+\begin_inset Formula 
+\[
+\text{Relative Gain}=\frac{X\left(T\right)-X\left(0\right)}{X\left(0\right)}=X\left(T\right)-1
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+For the trading strategies, 3 options will be examined as well:
+\end_layout
+
+\begin_layout Subparagraph
+1.
+ Constant Strategy
+\end_layout
+
+\begin_layout Standard
+For this strategy we fix 
+\begin_inset Formula $\pi\left(t\right)\equiv\pi$
+\end_inset
+
+.
+ For the sake of comparison we will check 
+\begin_inset Formula $\pi=\left\{ 0,0.5,1\right\} $
+\end_inset
+
+ corresponding to: a) not investing in the stock, b) 50% investement in
+ the stock and c) 100% investment in the stock.
+\end_layout
+
+\begin_layout Subparagraph
+2.
+ Best So Far Strategy
+\end_layout
+
+\begin_layout Standard
+This strategy picks at every moment the best performing asset so far (in
+ terms of relative gain), that is
+\begin_inset Formula 
+\[
+\pi_{n}=\begin{cases}
+1 & P_{1,n}\ge P_{0,n}\\
+0 & \mathrm{else}
+\end{cases}
+\]
+
+\end_inset
+
+(Remember that for both assets initial price is 1, so the inequality above
+ is actually 
+\begin_inset Formula 
+\[
+\frac{P_{1,n}-P_{1,0}}{P_{1,0}}\ge\frac{P_{0,n}-P_{0,0}}{P_{0,0}}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The intuition behind this strategy is that it is very immune against bad
+ scenarios where the stock performs poorly.
+ In those cases the strategy will be the invest all the wealth in the money
+ market accound and thus ensure steady gain.
+\end_layout
+
+\begin_layout Subparagraph
+3.
+ Optimal Strategy 
+\end_layout
+
+\begin_layout Standard
+We will use equation
+\begin_inset space ~
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:optimal"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+, that uses a constant portfolio as well.
+ However, for the current market, the market price of risk
+\begin_inset Formula 
+\[
+\theta=\frac{\mu-r}{\sigma}=0.45\,\left[\unit{years}^{-\frac{1}{2}}\right]
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+We will use the relative risk aversion of the logarithm function, which
+ is exactly 
+\begin_inset Formula $R=1$
+\end_inset
+
+.
+ Thus the optimal portfolio is given by
+\begin_inset Formula 
+\[
+\pi=\frac{\theta}{R\sigma}=2.25
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Note that 
+\begin_inset Formula $\pi>1$
+\end_inset
+
+, that is, under these market conditions, the optimal strategy is to 
+\emph on
+borrow
+\emph default
+ money from the money market account and invest it in the stock as well
+\begin_inset Foot
+status collapsed
+
+\begin_layout Plain Layout
+It is also intresting to note that when 
+\begin_inset Formula $\mu<r$
+\end_inset
+
+, then 
+\begin_inset Formula $\theta<0$
+\end_inset
+
+ and thus 
+\begin_inset Formula $\pi<0$
+\end_inset
+
+ (as 
+\begin_inset Formula $\sigma>0$
+\end_inset
+
+ surely).
+ That is we short the stock (sell borrowed stocks) and invest this money
+ in the money market account.
+\end_layout
+
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Section
+Conclusions
+\end_layout
+
+\begin_layout Standard
+**Consider a market with multiple stocks.
+ Consider the parameter estimation problem.
+ Consider new models for the market parameters with neural networks.
+ consider transaction costs.
+ consider consumption**
 \end_layout
 
 \begin_layout Section
@@ -204,264 +2681,6 @@ Since this library is dedicated to simulations, a big effort was put into
 The documentation for the library in its modolues is presented in this appendix.
 \end_layout
 
-\begin_layout Subsection
-The batch equation for the portfolio value process
-\end_layout
-
-\begin_layout Standard
-The portfolio SDE is
-\begin_inset Formula 
-\[
-\mathrm{d}X_{t}=\phi_{t}\mathrm{d}S_{t}+\left(X_{t}-\phi_{t}S_{t}\right)r_{t}\mathrm{d}t
-\]
-
-\end_inset
-
-Euler's method leads to the following update rule
-\begin_inset Formula 
-\[
-X_{n+1}=X_{n}+\phi_{n}\left(S_{n+1}-S_{n}\right)+\left(X_{n}-\phi_{n}S_{n}\right)r_{n}\Delta t
-\]
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-Using the fact
-\begin_inset Formula 
-\[
-\phi_{n}=\frac{\pi_{n}X_{n}}{S_{n}}
-\]
-
-\end_inset
-
-we get
-\begin_inset Formula 
-\begin{align*}
-X_{n+1} & =X_{n}+\frac{\pi_{n}X_{n}}{S_{n}}\left(S_{n+1}-S_{n}\right)+\left(X_{n}-\frac{\pi_{n}X_{n}}{S_{n}}S_{n}\right)r_{n}\Delta t\\
- & =X_{n}+X_{n}\pi_{n}\frac{S_{n+1}-S_{n}}{S_{n}}+X_{n}\left(1-\pi_{n}\right)r_{n}\Delta t\\
- & =X_{n}\left[1+\pi_{n}\frac{S_{n+1}-S_{n}}{S_{n}}+\left(1-\pi_{n}\right)r_{n}\Delta t\right]\\
- & \triangleq X_{n}a_{n+1}
-\end{align*}
-
-\end_inset
-
-Together with the intial condition 
-\begin_inset Formula $X_{0}=1$
-\end_inset
-
- we get
-\begin_inset Formula 
-\[
-X_{n}=\prod_{i=1}^{n}a_{n}
-\]
-
-\end_inset
-
-Thus the vector 
-\begin_inset Formula $\left(X_{1},X_{2},\dots,X_{n}\right)$
-\end_inset
-
- can be computed effeiciently with NumPy's 
-\family typewriter
-cumprod
-\family default
- function on the vector 
-\begin_inset Formula $\left(a_{1},a_{2}\dots,a_{n}\right)$
-\end_inset
-
-.
-\end_layout
-
-\begin_layout Section
-Equations for fun
-\end_layout
-
-\begin_layout Standard
-Malliavin derivative.
- Let 
-\begin_inset Formula $\left(t_{1},\dots,t_{n}\right)$
-\end_inset
-
- be a partition of 
-\begin_inset Formula $\left[0,T\right]$
-\end_inset
-
- and let 
-\begin_inset Formula $F$
-\end_inset
-
- be an RV of the form
-\begin_inset Formula 
-\[
-F\equiv f\left(W_{t_{1}},\dots,W_{t_{n}}\right),
-\]
-
-\end_inset
-
-where 
-\begin_inset Formula $f\left(x_{1},\dots,x_{n}\right)$
-\end_inset
-
- is a continuously differentiable function.
- 
-\begin_inset Formula $F$
-\end_inset
-
- is a 
-\emph on
-smooth Brownian functional
-\emph default
-.
-\end_layout
-
-\begin_layout Standard
-The Malliavin derivative 
-\begin_inset Formula $\mathcal{D}_{t}F$
-\end_inset
-
- is the change in 
-\begin_inset Formula $F$
-\end_inset
-
- due to a change in the path of 
-\begin_inset Formula $W_{t}$
-\end_inset
-
-.
- Let 
-\begin_inset Formula $t$
-\end_inset
-
- be a time such that 
-\begin_inset Formula $t_{1}<\dots<t_{k-1}<t\le t_{k}<\dots<t_{n}$
-\end_inset
-
- then
-\begin_inset Formula 
-\[
-\mathcal{D}_{t}F=\sum_{i=k}^{n}\frac{\partial f}{\partial x_{i}}\left(W_{t_{1}},\dots,W_{t_{n}}\right)
-\]
-
-\end_inset
-
-Good to remeber, for 
-\begin_inset Formula $h\left(t\right)$
-\end_inset
-
- and 
-\begin_inset Formula $F=\int_{0}^{T}h\left(t\right)\mathrm{d}W_{t}$
-\end_inset
-
-:
-\begin_inset Formula 
-\[
-\mathcal{D}_{t}F=h\left(t\right)
-\]
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Paragraph
-The Chain Rule
-\end_layout
-
-\begin_layout Standard
-If 
-\begin_inset Formula $F=\left(F_{1},\dots,F_{n}\right)$
-\end_inset
-
- is a random vector and 
-\begin_inset Formula $\phi$
-\end_inset
-
- is a differentiable function of 
-\begin_inset Formula $F$
-\end_inset
-
- with bounded derivative, then
-\begin_inset Formula 
-\[
-\mathcal{D}_{t}\phi\left(F\right)=\sum_{i=1}^{n}\frac{\partial\phi}{\partial x_{i}}\left(F\right)\mathcal{D}_{t}F_{i}
-\]
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-In particular if 
-\begin_inset Formula $x_{s}$
-\end_inset
-
- is a progressively measurable bounded process and 
-\begin_inset Formula $F=\int_{0}^{T}x_{s}\mathrm{d}s$
-\end_inset
-
- then
-\begin_inset Formula 
-\[
-\mathcal{D}_{t}F=\int_{t}^{T}\mathcal{D}_{t}x_{s}\mathrm{d}s.
-\]
-
-\end_inset
-
-For a stochastic integral 
-\begin_inset Formula $F=\int_{0}^{T}x_{s}\mathrm{d}W_{s}$
-\end_inset
-
- we have
-\begin_inset Formula 
-\[
-\mathcal{D}_{t}F=\int_{t}^{T}\mathcal{D}_{t}x_{s}\mathrm{d}W_{s}+x_{t}
-\]
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Paragraph
-Important for the paper
-\end_layout
-
-\begin_layout Standard
-If the random vector 
-\begin_inset Formula $Y_{t}$
-\end_inset
-
- satisfies
-\begin_inset Formula 
-\[
-\mathrm{d}Y_{t}=\mu^{Y}\left(Y_{t}\right)\mathrm{d}t+\sigma^{Y}\left(Y_{t}\right)\mathrm{d}W_{t}
-\]
-
-\end_inset
-
-then
-\begin_inset Formula 
-\[
-\mathrm{d}\left(\mathcal{D}_{t}Y_{s}\right)=\frac{\partial\mu^{Y}\left(Y_{s}\right)}{\partial Y}\mathcal{D}_{t}Y_{s}\mathrm{d}s+\frac{\partial\sigma\left(Y_{s}\right)}{\partial Y}\mathcal{D}_{t}Y_{s}\mathrm{d}W_{s}
-\]
-
-\end_inset
-
-and 
-\begin_inset Formula $\mathcal{D}_{t}Y_{0}=0$
-\end_inset
-
- with the initial condition 
-\begin_inset Formula $\lim_{s\to t}\mathcal{D}_{t}Y_{s}=\sigma\left(Y_{t}\right)$
-\end_inset
-
-.
-\end_layout
-
 \begin_layout Standard
 \begin_inset Newpage newpage
 \end_inset
@@ -474,7 +2693,7 @@ and
 LatexCommand bibtex
 btprint "btPrintCited"
 bibfiles "base"
-options "plainnat"
+options "bibtotoc,plainnat"
 
 \end_inset
 
