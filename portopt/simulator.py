@@ -10,6 +10,8 @@ import matplotlib.pyplot as plt
 
 from .expand_array import ExpandArray
 
+plt.rc('font', family='serif')
+
 
 def listify(x):
     """If x is a list, nothing is done, else create a one element list out
@@ -176,6 +178,9 @@ class Simulator(object):
         relative_errors = stds / means  # relative error per trader
 
         log_parts = []
+        text = f"Using {self.utility.__name__} utility\n"
+        log_parts.append(text)
+        print(text)
         for i, trader in enumerate(self.traders):
             text = f"""
             {to_ordinal(i+1)} {trader.identify()}
@@ -193,16 +198,22 @@ class Simulator(object):
             with open(filename, "w") as f:
                 f.write("".join(log_parts))
 
-    def display_histograms(self):
+    def display_histograms(self, save=False, output_dir=None):
         """Displays a pair plot to the user
 
         """
         err_msg = "Simulation must be run before results can be displayed."
         assert not self.final_portfolio_values.is_empty, err_msg
+        err_msg = "If you want to save, you have to specify output_dir"
+        assert (save and output_dir is not None) or not save, err_msg
 
         portfolio_utilities = self.utility(self.final_portfolio_values.as_array())
         N = portfolio_utilities.shape[1]
         names = [trader.identify() for trader in self.traders]
         dataframe = pd.DataFrame(portfolio_utilities.T, columns=names)
-        sns.pairplot(dataframe, diag_kws={"bins": int(np.sqrt(N))})
+        sns.pairplot(dataframe, corner=True, diag_kws={"bins": int(np.sqrt(N))})
+        if save:
+            name = f"pairplot_u={self.utility.__name__}.jpg"
+            plt.savefig(join(output_dir, name), bbox_inches="tight", dpi=200)
+
         plt.show()

@@ -42,7 +42,7 @@ class ConstantStrategy(object):
         return f"Constant strategy {self.stock_frac*100:.1f}% stock"
 
 
-class MaxWealthStrategy(object):
+class BestSoFarStrategy(object):
     """A strategy that picks at every moment the best performing asset so far
     in terms of relative gain.
 
@@ -107,7 +107,7 @@ class MaxWealthStrategy(object):
         return stock_fracs
 
     def identify(self):
-        return f"MaxWealth strategy"
+        return f"BestSoFar strategy"
 
 
 class ConstantCRRAOracleStrategy(object):
